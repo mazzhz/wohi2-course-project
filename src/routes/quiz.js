@@ -1,6 +1,11 @@
 const express = require("express");
 const router = express.Router();
 const prisma = require("../lib/prisma");
+const authenticate = require("../middleware/auth");
+const isOwner = require("../middleware/isOwner");
+
+// Apply authentication to ALL routes in this router
+router.use(authenticate);
 
 //Formatting quizes to use the correct format
 function formatQuiz(quiz) {
@@ -66,6 +71,7 @@ router.post("/", async (req, res) => {
       question,
       answer,
       date: new Date(),
+      userId: req.user.userId,
       keywords: {
         connectOrCreate: keywordsArray.map((kw) => ({
           where: { name: kw },
@@ -83,14 +89,14 @@ router.post("/", async (req, res) => {
 // PUT /quiz/:quizId
 // Edit a quiz 
 
-router.put("/:quizId", async (req, res) => {
+router.put("/:quizId", isOwner, async (req, res) => {
   const quizId = Number(req.params.quizId);
   const { question, answer, keywords } = req.body;
   const existingQuiz = await prisma.quiz.findUnique({ where: { id: quizId } });
 
-  if (!existingQuiz) {
+  /*if (!existingQuiz) {
     return res.status(404).json({ message: "Quiz not found" });
-  }
+  }*/
 
   if (!question || !answer) {
     return res.status(400).json({ msg: "question and its answer are required" });
@@ -122,7 +128,7 @@ router.put("/:quizId", async (req, res) => {
 // DELETE /quiz/:quizId
 // Delete a quiz
 
-router.delete("/:quizId", async (req, res) => {
+router.delete("/:quizId", isOwner, async (req, res) => {
   const quizId = Number(req.params.quizId);
 
   const quiz = await prisma.quiz.findUnique({
@@ -130,9 +136,9 @@ router.delete("/:quizId", async (req, res) => {
     include: { keywords: true },
   });
 
-  if (!quiz) {
+  /*if (!quiz) {
     return res.status(404).json({ message: "Quiz not found" });
-  }
+  }*/
 
   await prisma.quiz.delete({ where: { id: quizId } });
 

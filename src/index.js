@@ -6,12 +6,14 @@ const PORT = process.env.PORT || 3000;
 
 const postsRouter = require("./routes/quiz");
 const prisma = require("./lib/prisma");
+const authRouter = require("./routes/auth");
 
 // Middleware to parse JSON bodies (will be useful in later steps)
 app.use(express.json());
 
 // everything under /api/quiz
 app.use("/api/quiz", postsRouter);
+app.use("/api/auth", authRouter);
 
 app.use((req, res) => {
   res.json({msg: "Not found"});

@@ -13,6 +13,8 @@ model Quiz {
   answer    String
   date      DateTime  @default(now())
   keywords  Keyword[]
+  userId   Int
+  user     User @relation(fields: [userId], references: [id])
 
   @@map("quizes")
 }
@@ -20,7 +22,16 @@ model Quiz {
 model Keyword {
   id      Int    @id @default(autoincrement())
   name    String @unique
-  quizes Quiz[]
+  quizes  Quiz[]
 
   @@map("keywords")
 }
+
+model User {
+  id       Int    @id @default(autoincrement())
+  email    String @unique @db.VarChar(255)
+  password String @db.VarChar(255)
+  name     String @db.VarChar(100)
+  quizes   Quiz[]
+}
+
