@@ -13,8 +13,11 @@ model Quiz {
   answer    String
   date      DateTime  @default(now())
   keywords  Keyword[]
+  imageUrl  String? @db.VarChar(255)
   userId   Int
   user     User @relation(fields: [userId], references: [id])
+  likes   Like[]
+  solved    Solved[]
 
   @@map("quizes")
 }
@@ -33,5 +36,32 @@ model User {
   password String @db.VarChar(255)
   name     String @db.VarChar(100)
   quizes   Quiz[]
+  likes   Like[]
+  solved    Solved[]
+
+  @@map("users")
 }
 
+model Like {
+  id       Int    @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  userId   Int
+  user     User @relation(fields: [userId], references: [id])
+  quizId   Int
+  quiz     Quiz @relation(fields: [quizId], references: [id])
+
+  @@unique([userId, quizId])
+  @@map("likes")
+}
+
+model Solved {
+  id      Int  @id @default(autoincrement())
+  userId  Int
+  quizId  Int
+
+  user User @relation(fields: [userId], references: [id])
+  quiz Quiz @relation(fields: [quizId], references: [id])
+
+  @@unique([userId, quizId])
+  @@map ("solved")
+}
