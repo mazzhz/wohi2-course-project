@@ -1,30 +1,44 @@
 const express = require("express");
 const router = express.Router();
 const prisma = require("../lib/prisma");
-const authenticate = require("../middleware/auth");
-const isOwner = require("../middleware/isOwner");
 const multer = require("multer");
 const path = require('path');
+const { NotFoundError, ValidationError } = require("../lib/errors");
+const { z } = require("zod");
+
+
+const authenticate = require("../middleware/auth");
+const isOwner = require("../middleware/isOwner");
+
+const QuizInput = z.object({
+  question: z.string().min(1),
+  answer: z.string().min(1),
+});
+
+// Apply authentication to ALL routes in this router
+router.use(authenticate);
+
 
 const storage = multer.diskStorage({
   destination: path.join(__dirname, "..", "..", "public", "uploads" ),
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname);
     cb(null, `${Date.now()}-${Math.random().toString(36).slice(2,8)}${ext}`);
-},
+  },
 });
 
 const upload = multer({ 
   storage,
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith("image/")) cb(null, true);
-    else cb(new Error("Only image files are allowed!"));
+    else cb(new ValidationError("Only image files are allowed!"));
   },
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
-  });
+});
 
-// Apply authentication to ALL routes in this router
-router.use(authenticate);
+
+
+
 
 //Formatting quizes to use the correct format
 function formatQuiz(quiz) {
@@ -108,7 +122,8 @@ router.get("/:quizId", async (req, res) => {
   });
 
   if (!quiz) {
-    return res.status(404).json({ message: "Quiz not found" });
+    req.log.warn({ quizId }, "Quiz not found");
+    throw new NotFoundError("Quiz not found");
   }
 
   res.json(formatQuiz(quiz));
@@ -118,18 +133,22 @@ router.get("/:quizId", async (req, res) => {
 // POST /quiz
 // Create a new quiz
 router.post("/", upload.single("image"), async (req, res) => {
-  const { question, answer, keywords } = req.body;
+  const data = QuizInput.parse(req.body);
 
-  if (!question || !answer) {
-    return res.status(400).json({ message: "question and its answer are required" });
+  //if not work, previous was: if (!question || !answer) {
+  if (!data.question || !data.answer) {
+    req.log.warn("Attempted to create quiz with missing fields");
+    throw new ValidationError("Title and content are required");
   }
 
+  //if not work, delete data.
   const keywordsArray =
-  typeof keywords === "string"
-    ? keywords.split(",").map(k => k.trim()).filter(Boolean)
-    : Array.isArray(keywords)
-    ? keywords
+  typeof data.keywords === "string"
+    ? data.keywords.split(",").map(k => k.trim()).filter(Boolean)
+    : Array.isArray(data.keywords)
+    ? data.keywords
     : [];
+
   const imageUrl = req.file 
   ? `/uploads/${req.file.filename}` 
   : null;
@@ -137,8 +156,8 @@ router.post("/", upload.single("image"), async (req, res) => {
 
   const newQuiz = await prisma.quiz.create({
     data: {
-      question,
-      answer,
+      question: data.question,
+      answer: data.answer,
       date: new Date(),
       userId: req.user.userId,
       imageUrl,
@@ -168,13 +187,15 @@ router.put("/:quizId", upload.single("image"), isOwner, async (req, res) => {
   const { question, answer, keywords } = req.body;
   const existingQuiz = await prisma.quiz.findUnique({ where: { id: quizId } });
 
-
-  /*if (!existingQuiz) {
-    return res.status(404).json({ message: "Quiz not found" });
+  /*
+  if (!existingQuiz) {
+    req.log.warn({ quizId }, "Quiz not found for update");
+    throw new NotFoundError("Quiz not found");
   }*/
 
   if (!question || !answer) {
-    return res.status(400).json({ msg: "question and its answer are required" });
+    req.log.warn({ quizId }, "Attempted to update quiz with missing fields");
+    throw new ValidationError("Question and answer are required");
   }
 
   const keywordsArray =
@@ -183,9 +204,11 @@ router.put("/:quizId", upload.single("image"), isOwner, async (req, res) => {
     : Array.isArray(keywords)
     ? keywords
     : [];
+
   const imageUrl = req.file 
   ? `/uploads/${req.file.filename}` 
   : null;
+  
   const updatedQuiz = await prisma.quiz.update({
     where: { id: quizId },
     data: {
@@ -223,9 +246,10 @@ router.delete("/:quizId", isOwner, async (req, res) => {
     include: { keywords: true, user: true },
   });
 
-  /*if (!quiz) {
-    return res.status(404).json({ error: "Quiz not found" });
-  }*/
+  if (!quiz) {
+    req.log.warn({ quizId }, "Quiz not found for deletion");
+    throw new NotFoundError("Quiz not found");
+  }
 
   await prisma.quiz.delete({ where: { id: quizId } });
 
@@ -237,7 +261,7 @@ router.delete("/:quizId", isOwner, async (req, res) => {
 
 
 
-
+// POST /quiz/:quizId/play
 // saves the result of a quiz attempt (whether correct or not) in the database
 router.post("/:quizId/play", async (req, res) => {
   const quizId = Number(req.params.quizId);
@@ -245,7 +269,10 @@ router.post("/:quizId/play", async (req, res) => {
   const userId = req.user.userId;
 
   const quiz = await prisma.quiz.findUnique({ where: { id: quizId } });
-  if (!quiz) return res.status(404).json({ error: "Quiz not found" });
+  if (!quiz) {
+    req.log.warn({ quizId }, "Quiz not found for play attempt");
+    throw new NotFoundError("Quiz not found");
+  }
 
   const isCorrect = quiz.answer.trim().toLowerCase() === answer.trim().toLowerCase();
 
@@ -265,6 +292,15 @@ router.post("/:quizId/play", async (req, res) => {
   });
 });
 
+router.use((err, req, res, next) => {
+  if (err instanceof multer.MulterError ||
+      err?.message === "Only image files are allowed") {
+    return res.status(400).json({ msg: err.message });
+  }
+  next(err); // pass through to global handler
+});
+
+/*
 // POST /quiz/:quizId/like
 // Like a quiz
 router.post("/:quizId/like", async (req, res) => {
@@ -272,7 +308,7 @@ router.post("/:quizId/like", async (req, res) => {
 
   const quiz = await prisma.quiz.findUnique({where: { id: quizId }});
   if (!quiz) {
-    return res.status(404).json({ error: "Quiz not found" });
+    throw new NotFoundError("Quiz not found");
   }
 
   const like = await prisma.like.upsert({
@@ -299,7 +335,7 @@ router.delete("/:quizId/like", async (req, res) => {
 
   const quiz = await prisma.quiz.findUnique({where: { id: quizId }});
   if (!quiz) {
-    return res.status(404).json({ error: "Quiz not found" });
+    throw new NotFoundError("Quiz not found");
   }
 
   const like = await prisma.like.deleteMany({
@@ -317,5 +353,5 @@ router.delete("/:quizId/like", async (req, res) => {
      likeCount
     });
 });
-
+*/
 module.exports = router;
