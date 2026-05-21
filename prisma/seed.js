@@ -2,7 +2,6 @@ const { PrismaClient } = require("@prisma/client");
 const bcrypt = require("bcrypt");
 const prisma = new PrismaClient();
 
-
 const seedQuizzes = [
   {
     question: "What does the 'P' in REST stand for?",
@@ -31,12 +30,13 @@ const seedQuizzes = [
 ];
 
 async function main() {
+  // Delete existing data (with error handling)
   try {
-    await prisma.quiz.deleteMany();
-    await prisma.keyword.deleteMany();
-    await prisma.user.deleteMany();
+     await prisma.quiz.deleteMany();
+  await prisma.keyword.deleteMany();
+  await prisma.user.deleteMany();
   } catch (e) {
-    console.log("Skipping deletion (tables may not exist yet)");
+    console.log("Note: Some tables may be empty, continuing...");
   }
 
   // Create a default user
@@ -48,8 +48,9 @@ async function main() {
       name: "Admin User",
     },
   });
-console.log("Created user:", user.email);
-  // 2. Insert new seed data
+  console.log("Created user:", user.email);
+
+  // Insert seed data
   for (const quiz of seedQuizzes) {
     await prisma.quiz.create({
       data: {
