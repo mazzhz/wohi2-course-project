@@ -15,13 +15,15 @@ app.use(express.static(path.join(__dirname, "..", "public")));
 app.use("/api/auth", authRouter);
 app.use("/api/quiz", postRouter);
 
-app.use((req, res) => res.status(404).json({ message: "Not found" }));
-
-
+// Error handler BEFORE 404
 app.use((err, req, res, next) => {
   res.status(err.status || 500).json({
-    error: err.message || "Internal Server Error"});
+    error: err.message || "Internal Server Error"
+  });
 });
+
+// 404 handler AFTER error handler
+app.use((req, res) => res.status(404).json({ message: "Not found" }));
 
 app.use(errorHandler);
 

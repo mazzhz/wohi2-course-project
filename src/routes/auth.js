@@ -11,8 +11,9 @@ const SECRET = process.env.JWT_SECRET;
 
 // POST /auth/register
 // Register a new user
-router.post("/register", async (req, res) => {
-  const { email, password, name } = req.body;
+router.post("/register", async (req, res, next) => {
+  try {
+    const { email, password, name } = req.body;
     if (!email || !password || !name) 
       throw new ValidationError("email, password and name are required");
 
@@ -30,39 +31,45 @@ router.post("/register", async (req, res) => {
     const token = jwt.sign({ userId: user.id }, SECRET, { expiresIn: "1h" });
 
     res.status(201).json({ message: "User registered successfully", token });
+  } catch (error) {
+    next(error);
+  }
 });
 
 // POST /auth/login
 // Log in an existing user
-router.post("/login", async (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) 
-    throw new ValidationError("Email and password are required");
+router.post("/login", async (req, res, next) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) 
+      throw new ValidationError("Email and password are required");
 
-  // Find the user
-  const user = await prisma.user.findUnique({
-    where: { email },
-  });
+    // Find the user
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
 
-  if (!user) {
-    throw new UnauthorizedError("Invalid credentials");
+    if (!user) {
+      throw new UnauthorizedError("Invalid credentials");
+    }
+
+    // Verify the password
+    const isValid = await bcrypt.compare(password, user.password);
+    if (!isValid) {
+      throw new UnauthorizedError("Invalid credentials");
+    }
+
+    // Generate a token
+    const token = jwt.sign(
+      { userId: user.id },
+      SECRET,
+      { expiresIn: "1h" }
+    );
+
+    res.json({ token });
+  } catch (error) {
+    next(error);
   }
-
-  // Verify the password
-  const isValid = await bcrypt.compare(password, user.password);
-  if (!isValid) {
-    throw new UnauthorizedError("Invalid credentials");
-  }
-
-  // Generate a token
-  const token = jwt.sign(
-    { userId: user.id },
-    SECRET,
-    { expiresIn: "1h" }
-  );
-
-  res.json({ token });
-
 });
 
 module.exports = router; // This should be the last line
