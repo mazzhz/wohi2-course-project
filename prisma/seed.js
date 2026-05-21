@@ -31,10 +31,13 @@ const seedQuizzes = [
 ];
 
 async function main() {
-
-  await prisma.quiz.deleteMany();
-  await prisma.keyword.deleteMany();
-  await prisma.user.deleteMany();
+  try {
+    await prisma.quiz.deleteMany();
+    await prisma.keyword.deleteMany();
+    await prisma.user.deleteMany();
+  } catch (e) {
+    console.log("Skipping deletion (tables may not exist yet)");
+  }
 
   // Create a default user
   const hashedPassword = await bcrypt.hash("1234", 10);
