@@ -4,21 +4,23 @@
   - You are about to drop the `_keywordtopost` table. If the table is not empty, all the data it contains will be lost.
   - You are about to drop the `posts` table. If the table is not empty, all the data it contains will be lost.
 
-*/
+
 -- DropForeignKey
 ALTER TABLE `_keywordtopost` DROP FOREIGN KEY `_KeywordToPost_A_fkey`;
 
 -- DropForeignKey
 ALTER TABLE `_keywordtopost` DROP FOREIGN KEY `_KeywordToPost_B_fkey`;
-
+*/
 -- AlterTable
 ALTER TABLE `keywords` MODIFY `name` VARCHAR(191) NOT NULL;
-
+/*
 -- DropTable
 DROP TABLE `_keywordtopost`;
 
 -- DropTable
+
 DROP TABLE `posts`;
+*/
 
 -- CreateTable
 CREATE TABLE `quizes` (

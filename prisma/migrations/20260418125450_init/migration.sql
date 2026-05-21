@@ -1,4 +1,5 @@
 -- CreateTable
+/*
 CREATE TABLE `posts` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `title` VARCHAR(255) NOT NULL,
@@ -7,6 +8,7 @@ CREATE TABLE `posts` (
 
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+*/
 
 -- CreateTable
 CREATE TABLE `keywords` (
@@ -16,7 +18,7 @@ CREATE TABLE `keywords` (
     UNIQUE INDEX `keywords_name_key`(`name`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
+/*
 -- CreateTable
 CREATE TABLE `_KeywordToPost` (
     `A` INTEGER NOT NULL,
@@ -31,3 +33,4 @@ ALTER TABLE `_KeywordToPost` ADD CONSTRAINT `_KeywordToPost_A_fkey` FOREIGN KEY 
 
 -- AddForeignKey
 ALTER TABLE `_KeywordToPost` ADD CONSTRAINT `_KeywordToPost_B_fkey` FOREIGN KEY (`B`) REFERENCES `posts`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+*/
